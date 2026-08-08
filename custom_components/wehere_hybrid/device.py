@@ -79,8 +79,6 @@ class WeHereDevice:
             cb()
 
     async def async_start(self):
-        if "mqtt" not in self.hass.data:
-            raise RuntimeError("Home Assistant MQTT integration is not configured")
 
         async def adv(msg):
             self.parse_adv(msg.payload)
