@@ -1,0 +1,48 @@
+esphome:
+  name: "airbnk"
+  friendly_name: "airbnk"
+  platformio_options:
+    lib_ldf_mode: deep+
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+    sdkconfig_options:
+      CONFIG_BT_ENABLED: "y"
+      CONFIG_BT_NIMBLE_ENABLED: "y"
+
+logger:
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "Airbnk Gateway Fallback"
+    password: !secret ap_password
+
+mqtt:
+  broker: !secret mqtt_broker
+  username: !secret mqtt_user
+  password: !secret mqtt_password
+  discovery: false
+
+switch:
+  - platform: restart
+    name: "Airbnk Restart"
+
+web_server:
+  port: 80
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+airbnk_gateway:
+  mac_address: "AA:BB:CC:DD:EE:FF"
+  mqtt_topic: "airbnk"

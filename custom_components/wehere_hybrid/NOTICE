@@ -1,0 +1,6 @@
+This project is a hybrid integration derived from concepts/code in
+rospogrigio/airbnk_mqtt and rospogrigio/airbnk_cloud, both GPL-3.0 projects.
+
+Original repositories:
+- https://github.com/rospogrigio/airbnk_mqtt
+- https://github.com/rospogrigio/airbnk_cloud
