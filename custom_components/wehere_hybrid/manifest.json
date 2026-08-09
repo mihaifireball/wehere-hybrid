@@ -1,11 +1,16 @@
 {
   "domain": "wehere_hybrid",
   "name": "WeHere Hybrid Lock",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "documentation": "https://github.com/mihaifireball/wehere-hybrid",
   "issue_tracker": "https://github.com/mihaifireball/wehere-hybrid/issues",
-  "codeowners": [],
+  "codeowners": [
+    "@mihaifireball"
+  ],
   "config_flow": true,
+  "dependencies": [
+    "mqtt"
+  ],
   "iot_class": "cloud_polling",
   "requirements": [
     "cryptography>=41.0.0"
