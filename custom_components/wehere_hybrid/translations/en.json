@@ -24,7 +24,31 @@
           "mac_address": "Lock MAC address",
           "skip_device": "Skip this lock"
         }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate WeHere",
+        "description": "Your WeHere cloud session has expired. Enter the email used by your WeHere/Airbnk account. A new verification code will be sent to this address.",
+        "data": {
+          "email": "Email"
+        }
+      },
+      "reauth_verify": {
+        "title": "Verify WeHere account",
+        "description": "Enter the verification code sent to your email. Your existing locks and local configuration will be preserved.",
+        "data": {
+          "code": "Verification code"
+        }
       }
+    },
+    "error": {
+      "code_request_failed": "Unable to request a verification code from WeHere.",
+      "invalid_auth": "The verification code is invalid or has expired."
+    },
+    "abort": {
+      "code_request_failed": "Unable to request a verification code from WeHere.",
+      "token_retrieval_failed": "Unable to retrieve a WeHere access token.",
+      "reauth_entry_missing": "The existing WeHere configuration entry could not be found.",
+      "reauth_successful": "Re-authentication was successful."
     }
   }
 }
