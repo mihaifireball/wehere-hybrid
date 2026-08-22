@@ -27,14 +27,14 @@
       },
       "reauth_confirm": {
         "title": "Re-authenticate WeHere",
-        "description": "Your WeHere cloud session has expired. Enter the email used by your WeHere/Airbnk account. A new verification code will be sent to this address.",
+        "description": "Your WeHere cloud session has expired. Enter the account email to request a new verification code.",
         "data": {
           "email": "Email"
         }
       },
       "reauth_verify": {
         "title": "Verify WeHere account",
-        "description": "Enter the verification code sent to your email. Your existing locks and local configuration will be preserved.",
+        "description": "Enter the verification code. Existing lock configuration will be preserved.",
         "data": {
           "code": "Verification code"
         }
@@ -49,6 +49,18 @@
       "token_retrieval_failed": "Unable to retrieve a WeHere access token.",
       "reauth_entry_missing": "The existing WeHere configuration entry could not be found.",
       "reauth_successful": "Re-authentication was successful."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "WeHere Hybrid options",
+        "description": "Choose how Home Assistant sends lock commands.",
+        "data": {
+          "command_mode": "Command mode",
+          "retries_num": "Retry count"
+        }
+      }
     }
   }
 }
