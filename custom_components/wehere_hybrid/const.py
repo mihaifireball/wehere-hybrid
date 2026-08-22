@@ -8,6 +8,19 @@ CONF_MAC_ADDRESS = "mac_address"
 CONF_VOLTAGE_THRESHOLDS = "voltage_thresholds"
 CONF_RETRIES_NUM = "retries_num"
 
+CONF_COMMAND_MODE = "command_mode"
+COMMAND_MODE_AUTO = "auto"
+COMMAND_MODE_BLE = "ble"
+COMMAND_MODE_CLOUD = "cloud"
+COMMAND_MODE_MQTT = "mqtt"
+DEFAULT_COMMAND_MODE = COMMAND_MODE_AUTO
+COMMAND_MODES = {
+    COMMAND_MODE_AUTO: "Automatic (BLE → Cloud)",
+    COMMAND_MODE_BLE: "Direct Bluetooth only",
+    COMMAND_MODE_CLOUD: "Cloud / W100 only",
+    COMMAND_MODE_MQTT: "MQTT / ESP32 only",
+}
+
 DEFAULT_RETRIES_NUM = 3
 MAX_NORECEIVE_TIME = 30
 
@@ -16,14 +29,7 @@ UNLOCKED = 1
 JAMMED = 2
 OPERATING = 3
 FAILED = 4
-
-STATE_STRINGS = {
-    LOCKED: "Locked",
-    UNLOCKED: "Unlocked",
-    JAMMED: "Jammed",
-    OPERATING: "Operating",
-    FAILED: "Failed",
-}
+STATE_STRINGS = {LOCKED: "Locked", UNLOCKED: "Unlocked", JAMMED: "Jammed", OPERATING: "Operating", FAILED: "Failed"}
 
 TELEMETRY_TOPIC = "{topic}/tele"
 ADVERT_TOPIC = "{topic}/adv"
@@ -36,12 +42,4 @@ SENSOR_LAST_ADVERT = "last_advert"
 SENSOR_LOCK_EVENTS = "lock_events"
 SENSOR_RSSI = "signal_strength"
 SENSOR_BATTERY_LOW = "battery_low"
-
-SENSORS = (
-    SENSOR_STATE,
-    SENSOR_BATTERY,
-    SENSOR_VOLTAGE,
-    SENSOR_LAST_ADVERT,
-    SENSOR_LOCK_EVENTS,
-    SENSOR_RSSI,
-)
+SENSORS = (SENSOR_STATE, SENSOR_BATTERY, SENSOR_VOLTAGE, SENSOR_LAST_ADVERT, SENSOR_LOCK_EVENTS, SENSOR_RSSI)

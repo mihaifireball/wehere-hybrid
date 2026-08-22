@@ -6,13 +6,15 @@
   ],
   "config_flow": true,
   "dependencies": [
+    "bluetooth",
     "mqtt"
   ],
   "documentation": "https://github.com/mihaifireball/wehere-hybrid",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/mihaifireball/wehere-hybrid/issues",
   "requirements": [
-    "cryptography>=41.0.0"
+    "cryptography>=41.0.0",
+    "pyairbnk==1.2.0"
   ],
-  "version": "0.3.6"
+  "version": "0.3.7"
 }
