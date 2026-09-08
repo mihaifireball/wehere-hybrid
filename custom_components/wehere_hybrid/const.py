@@ -1,4 +1,5 @@
 DOMAIN = "wehere_hybrid"
+
 CONF_USERID = "userId"
 CONF_EMAIL = "email"
 CONF_TOKEN = "token"
@@ -9,16 +10,31 @@ CONF_VOLTAGE_THRESHOLDS = "voltage_thresholds"
 CONF_RETRIES_NUM = "retries_num"
 
 CONF_COMMAND_MODE = "command_mode"
+
 COMMAND_MODE_AUTO = "auto"
 COMMAND_MODE_BLE = "ble"
 COMMAND_MODE_CLOUD = "cloud"
 COMMAND_MODE_MQTT = "mqtt"
+
 DEFAULT_COMMAND_MODE = COMMAND_MODE_AUTO
+
 COMMAND_MODES = {
     COMMAND_MODE_AUTO: "Automatic (BLE → Cloud)",
     COMMAND_MODE_BLE: "Direct Bluetooth only",
     COMMAND_MODE_CLOUD: "Cloud / W100 only",
     COMMAND_MODE_MQTT: "MQTT / ESP32 only",
+}
+
+CONF_BATTERY_PROFILE = "battery_profile"
+
+BATTERY_PROFILE_ORIGINAL = "original"
+BATTERY_PROFILE_LIION_3S = "liion_3s"
+
+DEFAULT_BATTERY_PROFILE = BATTERY_PROFILE_ORIGINAL
+
+BATTERY_PROFILES = {
+    BATTERY_PROFILE_ORIGINAL: "Original batteries",
+    BATTERY_PROFILE_LIION_3S: "3S Li-ion rechargeable (3 × 3.7 V)",
 }
 
 DEFAULT_RETRIES_NUM = 3
@@ -29,7 +45,14 @@ UNLOCKED = 1
 JAMMED = 2
 OPERATING = 3
 FAILED = 4
-STATE_STRINGS = {LOCKED: "Locked", UNLOCKED: "Unlocked", JAMMED: "Jammed", OPERATING: "Operating", FAILED: "Failed"}
+
+STATE_STRINGS = {
+    LOCKED: "Locked",
+    UNLOCKED: "Unlocked",
+    JAMMED: "Jammed",
+    OPERATING: "Operating",
+    FAILED: "Failed",
+}
 
 TELEMETRY_TOPIC = "{topic}/tele"
 ADVERT_TOPIC = "{topic}/adv"
@@ -38,8 +61,20 @@ COMMAND_RESULT_TOPIC = "{topic}/command_result"
 SENSOR_STATE = "state"
 SENSOR_BATTERY = "battery"
 SENSOR_VOLTAGE = "voltage"
+SENSOR_PACK_VOLTAGE = "estimated_pack_voltage"
+SENSOR_CELL_VOLTAGE = "estimated_cell_voltage"
 SENSOR_LAST_ADVERT = "last_advert"
 SENSOR_LOCK_EVENTS = "lock_events"
 SENSOR_RSSI = "signal_strength"
 SENSOR_BATTERY_LOW = "battery_low"
-SENSORS = (SENSOR_STATE, SENSOR_BATTERY, SENSOR_VOLTAGE, SENSOR_LAST_ADVERT, SENSOR_LOCK_EVENTS, SENSOR_RSSI)
+
+SENSORS = (
+    SENSOR_STATE,
+    SENSOR_BATTERY,
+    SENSOR_VOLTAGE,
+    SENSOR_PACK_VOLTAGE,
+    SENSOR_CELL_VOLTAGE,
+    SENSOR_LAST_ADVERT,
+    SENSOR_LOCK_EVENTS,
+    SENSOR_RSSI,
+)
