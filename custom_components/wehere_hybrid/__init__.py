@@ -11,6 +11,7 @@ from .device import WeHereDevice
 from .const import (
     DOMAIN, CONF_DEVICE_CONFIGS, CONF_RETRIES_NUM, DEFAULT_RETRIES_NUM,
     CONF_COMMAND_MODE, DEFAULT_COMMAND_MODE,
+    CONF_BATTERY_PROFILE, DEFAULT_BATTERY_PROFILE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -32,10 +33,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     command_mode = entry.options.get(CONF_COMMAND_MODE, DEFAULT_COMMAND_MODE)
     retries = entry.options.get(CONF_RETRIES_NUM, DEFAULT_RETRIES_NUM)
+    battery_profile = entry.options.get(CONF_BATTERY_PROFILE, DEFAULT_BATTERY_PROFILE)
     devices = {}
     for sn, cfg in entry.data[CONF_DEVICE_CONFIGS].items():
         dev = WeHereDevice(
-            hass=hass, cloud=cloud, config=cfg, retries=retries, command_mode=command_mode
+            hass=hass,
+            cloud=cloud,
+            config=cfg,
+            retries=retries,
+            command_mode=command_mode,
+            battery_profile=battery_profile,
         )
         await dev.async_start()
         devices[sn] = dev
