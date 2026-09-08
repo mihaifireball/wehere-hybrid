@@ -16,5 +16,5 @@
     "cryptography>=41.0.0",
     "pyairbnk==1.2.0"
   ],
-  "version": "0.3.7"
+  "version": "0.3.8"
 }
