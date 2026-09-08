@@ -8,6 +8,7 @@ from .const import (
     DOMAIN, CONF_USERID, CONF_TOKEN, CONF_DEVICE_CONFIGS, CONF_MQTT_TOPIC,
     CONF_MAC_ADDRESS, CONF_VOLTAGE_THRESHOLDS, CONF_RETRIES_NUM, DEFAULT_RETRIES_NUM,
     CONF_COMMAND_MODE, DEFAULT_COMMAND_MODE, COMMAND_MODES,
+    CONF_BATTERY_PROFILE, DEFAULT_BATTERY_PROFILE, BATTERY_PROFILES,
 )
 
 STEP_USER = vol.Schema({vol.Required(CONF_EMAIL): str})
@@ -157,6 +158,10 @@ class WeHereOptionsFlow(config_entries.OptionsFlow):
                     CONF_COMMAND_MODE,
                     default=self.config_entry.options.get(CONF_COMMAND_MODE, DEFAULT_COMMAND_MODE),
                 ): vol.In(COMMAND_MODES),
+                vol.Optional(
+                    CONF_BATTERY_PROFILE,
+                    default=self.config_entry.options.get(CONF_BATTERY_PROFILE, DEFAULT_BATTERY_PROFILE),
+                ): vol.In(BATTERY_PROFILES),
                 vol.Optional(
                     CONF_RETRIES_NUM,
                     default=self.config_entry.options.get(CONF_RETRIES_NUM, DEFAULT_RETRIES_NUM),
