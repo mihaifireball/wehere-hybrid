@@ -14,25 +14,43 @@ from .const import (
     ADVERT_TOPIC, COMMAND_RESULT_TOPIC, TELEMETRY_TOPIC, LOCKED, UNLOCKED, JAMMED,
     OPERATING, FAILED, STATE_STRINGS, MAX_NORECEIVE_TIME, CONF_MAC_ADDRESS, CONF_MQTT_TOPIC,
     COMMAND_MODE_AUTO, COMMAND_MODE_BLE, COMMAND_MODE_CLOUD, COMMAND_MODE_MQTT,
+    BATTERY_PROFILE_ORIGINAL, BATTERY_PROFILE_LIION_3S,
 )
 
 _LOGGER = logging.getLogger(__name__)
 STATE_CONFIRM_TIMEOUT = 60
 
+LIION_3S_PACK_CORRECTION = 1.35
+LIION_CELL_CURVE = (
+    (3.30, 0.0),
+    (3.50, 10.0),
+    (3.60, 20.0),
+    (3.68, 30.0),
+    (3.73, 40.0),
+    (3.79, 50.0),
+    (3.85, 60.0),
+    (3.92, 70.0),
+    (4.00, 80.0),
+    (4.10, 90.0),
+    (4.20, 100.0),
+)
+
 class WeHereDevice:
-    def __init__(self, hass: HomeAssistant, cloud, config, retries=3, command_mode=COMMAND_MODE_AUTO):
+    def __init__(self, hass: HomeAssistant, cloud, config, retries=3, command_mode=COMMAND_MODE_AUTO, battery_profile=BATTERY_PROFILE_ORIGINAL):
         self.hass = hass
         self.cloud = cloud
         self.config = config
         self.sn = config["sn"]
         self.retries = retries
         self.command_mode = command_mode
+        self.battery_profile = battery_profile
         self.generator = AirbnkCodesGenerator()
         self.generator.decrypt_keys(config["newSninfo"], config["appKey"])
         self.ble = WeHereBleTransport(hass=hass, config=config, advertisement_callback=self._handle_ble_advertisement)
-        self.ble_probe_successful = None
         self.curr_state = UNLOCKED
         self.voltage = None
+        self.estimated_pack_voltage = None
+        self.estimated_cell_voltage = None
         self.battery_perc = None
         self.is_low_battery = None
         self.lock_events = 0
@@ -82,16 +100,10 @@ class WeHereDevice:
         self._unsub.append(await mqtt.async_subscribe(self.hass, ADVERT_TOPIC.format(topic=topic), adv))
         self._unsub.append(await mqtt.async_subscribe(self.hass, TELEMETRY_TOPIC.format(topic=topic), telemetry))
         self._unsub.append(await mqtt.async_subscribe(self.hass, COMMAND_RESULT_TOPIC.format(topic=topic), result))
-        await self.ble.async_start()
         try:
-            self.ble_probe_successful = await self.ble.async_probe()
-            _LOGGER.warning(
-                "DIRECT BLE TEST %s for %s (%s)",
-                "SUCCESSFUL" if self.ble_probe_successful else "FAILED", self.name, self.ble.address
-            )
+            await self.ble.async_start()
         except Exception as err:
-            self.ble_probe_successful = False
-            _LOGGER.exception("Unexpected direct BLE probe error for %s (%s): %s", self.name, self.ble.address, err)
+            _LOGGER.exception("Unable to start BLE tracking for %s (%s): %s", self.name, self.ble.address, err)
 
     async def async_stop(self):
         await self.ble.async_stop()
@@ -110,11 +122,25 @@ class WeHereDevice:
                 self.last_command_error = None
         self._notify()
 
+    def _update_battery_values(self, voltage):
+        self.voltage = voltage
+        if voltage is None:
+            self.estimated_pack_voltage = None
+            self.estimated_cell_voltage = None
+            self.battery_perc = None
+            return
+        if self.battery_profile == BATTERY_PROFILE_LIION_3S:
+            self.estimated_pack_voltage = round(voltage * LIION_3S_PACK_CORRECTION, 2)
+            self.estimated_cell_voltage = round(self.estimated_pack_voltage / 3.0, 3)
+        else:
+            self.estimated_pack_voltage = voltage
+            self.estimated_cell_voltage = None
+        self.battery_perc = self._battery_percentage(voltage)
+
     def _handle_ble_advertisement(self, parsed, rssi):
         self.lock_events = max(self.lock_events, parsed.lock_events)
-        self.voltage = parsed.voltage
+        self._update_battery_values(parsed.voltage)
         self.is_low_battery = parsed.is_low_battery
-        self.battery_perc = self._battery_percentage(self.voltage)
         self.rssi = rssi
         self.last_advert_time = int(time.time())
         self.available = True
@@ -127,14 +153,13 @@ class WeHereDevice:
         raw = data.get("data", "").upper()
         b = bytearray.fromhex(raw)
         if len(b) < 24 or b[0] != 0xBA or b[1] != 0xBA: return
-        self.voltage = ((b[16] << 8) | b[17]) * 0.01
+        self._update_battery_values(((b[16] << 8) | b[17]) * 0.01)
         self.lock_events = max(self.lock_events, (b[18] << 24) | (b[19] << 16) | (b[20] << 8) | b[21])
         new_state = (b[22] >> 4) & 3
         clockwise = bool(b[22] & 0x80)
         if new_state != JAMMED and clockwise: new_state = 1 - new_state
         self._set_state(new_state)
         self.is_low_battery = bool(b[23] & 0x10)
-        self.battery_perc = self._battery_percentage(self.voltage)
         self.rssi = data.get("rssi")
         self.last_advert_time = int(time.time())
         self.available = True
@@ -156,18 +181,36 @@ class WeHereDevice:
         b = bytearray.fromhex(lock_status)
         if len(b) < 17 or b[0] != 0xAA or b[3] != 0x02 or b[4] != 0x04: return
         self.lock_events = max(self.lock_events, (b[10] << 24) | (b[11] << 16) | (b[12] << 8) | b[13])
-        self.voltage = ((b[14] << 8) | b[15]) * 0.01
+        self._update_battery_values(((b[14] << 8) | b[15]) * 0.01)
         self._set_state((b[16] >> 4) & 3)
-        self.battery_perc = self._battery_percentage(self.voltage)
         self._notify()
 
+    def _liion_percentage(self, cell_voltage):
+        if cell_voltage is None: return None
+        if cell_voltage <= LIION_CELL_CURVE[0][0]: return 0.0
+        if cell_voltage >= LIION_CELL_CURVE[-1][0]: return 100.0
+        for index in range(1, len(LIION_CELL_CURVE)):
+            low_voltage, low_percent = LIION_CELL_CURVE[index - 1]
+            high_voltage, high_percent = LIION_CELL_CURVE[index]
+            if cell_voltage <= high_voltage:
+                fraction = (cell_voltage - low_voltage) / (high_voltage - low_voltage)
+                return round(low_percent + fraction * (high_percent - low_percent), 1)
+        return 100.0
+
     def _battery_percentage(self, voltage):
+        if voltage is None: return None
+        if self.battery_profile == BATTERY_PROFILE_LIION_3S:
+            return self._liion_percentage((voltage * LIION_3S_PACK_CORRECTION) / 3.0)
         thresholds = self.config.get("voltage_thresholds") or []
         if len(thresholds) < 3: return None
         if voltage >= thresholds[2]: return 100
         if voltage >= thresholds[1]:
-            return round(66.6 + 33.3 * (voltage-thresholds[1])/(thresholds[2]-thresholds[1]), 1)
-        return max(0, round(33.3 + 33.3 * (voltage-thresholds[0])/(thresholds[1]-thresholds[0]), 1))
+            denominator = thresholds[2] - thresholds[1]
+            if denominator == 0: return 66.6
+            return round(66.6 + 33.3 * (voltage-thresholds[1])/denominator, 1)
+        denominator = thresholds[1] - thresholds[0]
+        if denominator == 0: return 0
+        return max(0, round(33.3 + 33.3 * (voltage-thresholds[0])/denominator, 1))
 
     def check_availability(self):
         if self.ble.available:
@@ -195,9 +238,7 @@ class WeHereDevice:
         result_events = getattr(status, "lock_events", None)
         if result_events is not None: self.lock_events = max(self.lock_events, result_events)
         result_voltage = getattr(status, "voltage", None)
-        if result_voltage is not None:
-            self.voltage = result_voltage
-            self.battery_perc = self._battery_percentage(self.voltage)
+        if result_voltage is not None: self._update_battery_values(result_voltage)
         result_low_battery = getattr(status, "is_low_battery", None)
         if result_low_battery is not None: self.is_low_battery = result_low_battery
         result_state = getattr(status, "lock_state", None)
@@ -205,7 +246,6 @@ class WeHereDevice:
 
     async def async_operate(self, unlock: bool):
         desired = UNLOCKED if unlock else LOCKED
-        action = "unlock" if unlock else "lock"
         self._state_event.clear()
         self.last_command_error = None
         self.last_command_time = int(time.time())
