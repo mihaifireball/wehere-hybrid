@@ -1,6 +1,10 @@
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 from homeassistant.const import PERCENTAGE, SIGNAL_STRENGTH_DECIBELS, UnitOfElectricPotential, UnitOfTime
-from .const import DOMAIN, SENSOR_BATTERY, SENSOR_VOLTAGE, SENSOR_LAST_ADVERT, SENSOR_LOCK_EVENTS, SENSOR_RSSI, SENSOR_STATE
+from .const import (
+    DOMAIN, SENSOR_BATTERY, SENSOR_VOLTAGE, SENSOR_PACK_VOLTAGE,
+    SENSOR_CELL_VOLTAGE, SENSOR_LAST_ADVERT, SENSOR_LOCK_EVENTS,
+    SENSOR_RSSI, SENSOR_STATE,
+)
 
 async def async_setup_entry(hass, entry, async_add_entities):
     entities = []
@@ -9,7 +13,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
             WeHereSensor(device, SENSOR_STATE, "Status"),
             WeHereOperationSensor(device),
             WeHereSensor(device, SENSOR_BATTERY, "Battery", SensorDeviceClass.BATTERY, PERCENTAGE),
-            WeHereSensor(device, SENSOR_VOLTAGE, "Battery voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT),
+            WeHereSensor(device, SENSOR_VOLTAGE, "Raw battery voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT),
+            WeHereSensor(device, SENSOR_PACK_VOLTAGE, "Estimated pack voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT),
+            WeHereSensor(device, SENSOR_CELL_VOLTAGE, "Estimated cell voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT),
             WeHereSensor(device, SENSOR_LAST_ADVERT, "Time from last advert", None, UnitOfTime.SECONDS),
             WeHereSensor(device, SENSOR_LOCK_EVENTS, "Lock events counter"),
             WeHereSensor(device, SENSOR_RSSI, "Signal strength", SensorDeviceClass.SIGNAL_STRENGTH, SIGNAL_STRENGTH_DECIBELS),
@@ -27,8 +33,18 @@ class WeHereSensor(SensorEntity):
         self._attr_device_class = device_class
         self._attr_native_unit_of_measurement = unit
 
+        if key == SENSOR_BATTERY:
+            self._attr_suggested_display_precision = 1
+        elif key == SENSOR_CELL_VOLTAGE:
+            self._attr_suggested_display_precision = 3
+        elif key in (SENSOR_VOLTAGE, SENSOR_PACK_VOLTAGE):
+            self._attr_suggested_display_precision = 2
+
     async def async_added_to_hass(self):
         self._device.add_callback(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self):
+        self._device.remove_callback(self.async_write_ha_state)
 
     @property
     def available(self):
@@ -47,6 +63,10 @@ class WeHereSensor(SensorEntity):
             return self._device.battery_perc
         if self._key == SENSOR_VOLTAGE:
             return self._device.voltage
+        if self._key == SENSOR_PACK_VOLTAGE:
+            return self._device.estimated_pack_voltage
+        if self._key == SENSOR_CELL_VOLTAGE:
+            return self._device.estimated_cell_voltage
         if self._key == SENSOR_LAST_ADVERT:
             return max(0, int(__import__("time").time()) - self._device.last_advert_time) if self._device.last_advert_time else None
         if self._key == SENSOR_LOCK_EVENTS:
