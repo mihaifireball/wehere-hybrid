@@ -444,13 +444,49 @@ class WeHereBleTransport:
                 service_info.device
             )
 
-        _LOGGER.debug(
-            "%s (%s): Fresh BLE advertisement "
-            "received, RSSI=%s",
-            self.name,
-            self.address,
-            service_info.rssi,
+        #
+        # Parse the exact fresh advertisement so async_operate()
+        # can use the lock's current event counter rather than
+        # the value captured before waiting for this packet.
+        #
+        self._fresh_lock_events = None
+
+        payload = service_info.manufacturer_data.get(
+            AIRBNK_MANUFACTURER_ID
         )
+
+        if payload:
+            try:
+                parsed = parse_advertisement_data(
+                    bytes(payload),
+                    expected_lock_sn=self.sn,
+                )
+                self._fresh_lock_events = parsed.lock_events
+
+                _LOGGER.debug(
+                    "%s (%s): Fresh BLE advertisement "
+                    "received, RSSI=%s, lock_events=%s",
+                    self.name,
+                    self.address,
+                    service_info.rssi,
+                    self._fresh_lock_events,
+                )
+            except Exception as err:
+                _LOGGER.debug(
+                    "%s (%s): Unable to parse fresh "
+                    "advertisement: %s",
+                    self.name,
+                    self.address,
+                    err,
+                )
+        else:
+            _LOGGER.debug(
+                "%s (%s): Fresh BLE advertisement "
+                "received, RSSI=%s, no manufacturer payload",
+                self.name,
+                self.address,
+                service_info.rssi,
+            )
 
         return self._ble_device
 
@@ -526,9 +562,26 @@ class WeHereBleTransport:
         # First try to catch the lock while it is
         # actively advertising.
         #
+        # Reset the per-command fresh counter before waiting.
+        self._fresh_lock_events = None
+
         ble_device = (
             await self
             ._async_get_fresh_device()
+        )
+
+        requested_lock_events = lock_events
+
+        if self._fresh_lock_events is not None:
+            lock_events = self._fresh_lock_events
+
+        _LOGGER.warning(
+            "%s (%s): EVENT COUNTER requested=%s fresh=%s using=%s",
+            self.name,
+            self.address,
+            requested_lock_events,
+            self._fresh_lock_events,
+            lock_events,
         )
 
         if ble_device is None:
