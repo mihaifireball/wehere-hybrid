@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 import asyncio
@@ -7,6 +8,11 @@ from typing import Any, Callable
 
 from homeassistant.components import bluetooth
 from homeassistant.core import HomeAssistant, callback
+
+from bleak_retry_connector import (
+    BleakClientWithServiceCache,
+    establish_connection,
+)
 
 from pyairbnk import (
     AirbnkBleClient,
@@ -19,6 +25,24 @@ from .const import CONF_MAC_ADDRESS
 
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class WeHereAirbnkBleClient(AirbnkBleClient):
+    """Airbnk BLE client using bleak-retry-connector."""
+
+    async def _async_connect(
+        self,
+        ble_device,
+    ):
+        """Connect through bleak-retry-connector."""
+
+        return await establish_connection(
+            BleakClientWithServiceCache,
+            ble_device,
+            self._name,
+            max_attempts=1,
+            ble_device_callback=self._current_ble_device,
+        )
 
 
 AIRBNK_MANUFACTURER_ID = 0xBABA
@@ -92,7 +116,7 @@ class WeHereBleTransport:
         self._last_service_info = None
         self._unsub_bluetooth = None
 
-        self._ble_client = AirbnkBleClient(
+        self._ble_client = WeHereAirbnkBleClient(
             self._ble_device_callback,
             name=self.name,
         )
@@ -444,49 +468,13 @@ class WeHereBleTransport:
                 service_info.device
             )
 
-        #
-        # Parse the exact fresh advertisement so async_operate()
-        # can use the lock's current event counter rather than
-        # the value captured before waiting for this packet.
-        #
-        self._fresh_lock_events = None
-
-        payload = service_info.manufacturer_data.get(
-            AIRBNK_MANUFACTURER_ID
+        _LOGGER.debug(
+            "%s (%s): Fresh BLE advertisement "
+            "received, RSSI=%s",
+            self.name,
+            self.address,
+            service_info.rssi,
         )
-
-        if payload:
-            try:
-                parsed = parse_advertisement_data(
-                    bytes(payload),
-                    expected_lock_sn=self.sn,
-                )
-                self._fresh_lock_events = parsed.lock_events
-
-                _LOGGER.debug(
-                    "%s (%s): Fresh BLE advertisement "
-                    "received, RSSI=%s, lock_events=%s",
-                    self.name,
-                    self.address,
-                    service_info.rssi,
-                    self._fresh_lock_events,
-                )
-            except Exception as err:
-                _LOGGER.debug(
-                    "%s (%s): Unable to parse fresh "
-                    "advertisement: %s",
-                    self.name,
-                    self.address,
-                    err,
-                )
-        else:
-            _LOGGER.debug(
-                "%s (%s): Fresh BLE advertisement "
-                "received, RSSI=%s, no manufacturer payload",
-                self.name,
-                self.address,
-                service_info.rssi,
-            )
 
         return self._ble_device
 
@@ -510,9 +498,7 @@ class WeHereBleTransport:
         if ble_device is None:
             _LOGGER.warning(
                 "No connectable BLEDevice available "
-                "for %s (%s)",
-                self.name,
-                self.address,
+                f"for {self.name} ({self.address})",
             )
             return False
 
@@ -562,26 +548,9 @@ class WeHereBleTransport:
         # First try to catch the lock while it is
         # actively advertising.
         #
-        # Reset the per-command fresh counter before waiting.
-        self._fresh_lock_events = None
-
         ble_device = (
             await self
             ._async_get_fresh_device()
-        )
-
-        requested_lock_events = lock_events
-
-        if self._fresh_lock_events is not None:
-            lock_events = self._fresh_lock_events
-
-        _LOGGER.warning(
-            "%s (%s): EVENT COUNTER requested=%s fresh=%s using=%s",
-            self.name,
-            self.address,
-            requested_lock_events,
-            self._fresh_lock_events,
-            lock_events,
         )
 
         if ble_device is None:
@@ -658,3 +627,4 @@ class WeHereBleTransport:
             )
 
         return result
+      
